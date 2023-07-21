@@ -26,7 +26,6 @@ func ConnectKubernetes(path string) *clientset.Clientset {
 	config, err := getKubernetesConfig(path)
 	if err != nil {
 		log.Fail(err.Error())
-		panic(err)
 	}
 	return clientset.NewForConfigOrDie(config)
 }
