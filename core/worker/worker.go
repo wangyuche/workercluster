@@ -56,6 +56,9 @@ func (s *Server) StreamWorker(stream wk.WorkerGRPC_StreamWorkerServer) error {
 			return nil
 		}
 		if err != nil {
+			s.m.RLock()
+			delete(s.workers, c)
+			s.m.RUnlock()
 			log.Error(err.Error())
 			return err
 		}
