@@ -3,9 +3,6 @@ package workercluster
 import (
 	"context"
 
-	"os"
-
-	"github.com/wangyuche/goutils/log"
 	"github.com/wangyuche/workercluster/core/k8s"
 	"github.com/wangyuche/workercluster/core/leader"
 	"github.com/wangyuche/workercluster/core/worker"
@@ -32,14 +29,14 @@ type iWorkerCallBack interface {
 	WorkerRecv([]byte)
 }
 
-func New() *WorkerCluster {
+func New(path string) *WorkerCluster {
 	instance := &WorkerCluster{}
-	instance.connectk8s()
+	instance.connectk8s(path)
 	return instance
 }
 
-func (this *WorkerCluster) connectk8s() {
-	this.k8s = k8s.ConnectKubernetes(os.Getenv("K8SCONFIG"))
+func (this *WorkerCluster) connectk8s(path string) {
+	this.k8s = k8s.ConnectKubernetes(path)
 }
 
 func (this *WorkerCluster) Run(name string, namespace string, id string, port string, cb iWorkerCallBack) {
@@ -62,7 +59,6 @@ func (this *WorkerCluster) leaderElectionEvent() {
 			this.cb.BeMaster()
 			break
 		case m := <-this.masterchangecb:
-			log.Debug("m is " + m)
 			this.worker = worker.NewWorker(m, this.cb)
 			this.worker.Run()
 			break

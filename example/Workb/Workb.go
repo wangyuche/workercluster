@@ -15,7 +15,7 @@ var workcluster *workercluster.WorkerCluster
 
 func main() {
 	log.New(log.LogType(os.Getenv("LogType")))
-	workcluster = workercluster.New()
+	workcluster = workercluster.New(os.Getenv("K8SCONFIG"))
 	workcluster.Run("aaa", "default", os.Getenv("HOSTNAME")+":"+os.Getenv("PORT"), os.Getenv("PORT"), &WorkerServerCallBack{})
 	time.Sleep(5 * time.Second)
 	/*
