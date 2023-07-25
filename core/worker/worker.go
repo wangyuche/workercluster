@@ -46,26 +46,28 @@ func NewServer(port string, cb iWorkerServerCallBack) *Server {
 }
 
 func (s *Server) StreamWorker(stream wk.WorkerGRPC_StreamWorkerServer) error {
-	s.m.RLock()
+	s.m.Lock()
 	c := &WorkerInfo{Worker: stream}
 	s.workers[c] = wk.WorkerStatus_idle
-	s.m.RUnlock()
+	s.m.Unlock()
 	for {
 		data, err := stream.Recv()
 		if err == io.EOF {
 			return nil
 		}
 		if err != nil {
-			s.m.RLock()
+			s.m.Lock()
 			delete(s.workers, c)
-			s.m.RUnlock()
+			s.m.Unlock()
 			log.Error(err.Error())
 			return err
 		}
 
 		switch data.Event {
 		case wk.WorkerEvent_getstatus:
+			s.m.Lock()
 			s.workers[c] = data.Status
+			s.m.Unlock()
 			if data.Status == wk.WorkerStatus_idle {
 				s.cb.WorkerIdleEvent(c)
 			}
@@ -80,7 +82,13 @@ func (s *Server) StreamWorker(stream wk.WorkerGRPC_StreamWorkerServer) error {
 }
 
 func (s *Server) GetWorkers() map[*WorkerInfo]wk.WorkerStatus {
-	return s.workers
+	s.m.RLock()
+	defer s.m.RUnlock()
+	var d map[*WorkerInfo]wk.WorkerStatus = make(map[*WorkerInfo]wk.WorkerStatus)
+	for k, v := range s.workers {
+		d[k] = v
+	}
+	return d
 }
 
 func (wi *WorkerInfo) Send(data []byte) {
@@ -146,6 +154,7 @@ func (this *Worker) ChangeStatusIdle() {
 
 func (this *Worker) ChangeStatusBusy() {
 	this.status = wk.WorkerStatus_busy
+	this.stream.Send(&wk.WorkerResStruct{Event: wk.WorkerEvent_getstatus, Status: this.status})
 }
 
 func (this *Worker) Send(data []byte) {

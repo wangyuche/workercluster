@@ -18,16 +18,16 @@ func main() {
 	workcluster = workercluster.New()
 	workcluster.Run("aaa", "default", os.Getenv("HOSTNAME")+":"+os.Getenv("PORT"), os.Getenv("PORT"), &WorkerServerCallBack{})
 	time.Sleep(5 * time.Second)
-
-	wks := workcluster.GetWorkers()
-	for worker, status := range wks {
-		if status == wk.WorkerStatus_idle {
-			worker.Send([]byte(strconv.Itoa(count)))
-			count = count + skip
-			time.Sleep(2 * time.Second)
+	/*
+		wks := workcluster.GetWorkers()
+		for worker, status := range wks {
+			if status == wk.WorkerStatus_idle {
+				worker.Send([]byte(strconv.Itoa(count)))
+				count = count + skip
+				time.Sleep(2 * time.Second)
+			}
 		}
-	}
-
+	*/
 	ch := make(chan os.Signal, 1)
 	<-ch
 }
@@ -44,10 +44,12 @@ func (this *WorkerServerCallBack) WorkerRecv(data []byte) {
 }
 
 func (this *WorkerServerCallBack) WorkerIdleEvent(server *worker.WorkerInfo) {
-	log.Debug("idle")
-	server.Send([]byte(strconv.Itoa(count)))
-	count = count + skip
-	time.Sleep(2 * time.Second)
+	/*
+		log.Debug("idle")
+		server.Send([]byte(strconv.Itoa(count)))
+		count = count + skip
+		time.Sleep(2 * time.Second)
+	*/
 }
 
 func (this *WorkerServerCallBack) MasterRecv(data []byte) {
@@ -58,8 +60,8 @@ var count int = 0
 var skip int = 5
 
 func (this *WorkerServerCallBack) BeMaster() {
-	/*
-		time.Sleep(5 * time.Second)
+	time.Sleep(5 * time.Second)
+	go func() {
 		for {
 			wks := workcluster.GetWorkers()
 			if wks == nil {
@@ -67,10 +69,12 @@ func (this *WorkerServerCallBack) BeMaster() {
 			}
 			for worker, status := range wks {
 				if status == wk.WorkerStatus_idle {
+					log.Debug(strconv.Itoa(count))
 					worker.Send([]byte(strconv.Itoa(count)))
 					count = count + skip
 					time.Sleep(2 * time.Second)
 				}
 			}
-		}*/
+		}
+	}()
 }
