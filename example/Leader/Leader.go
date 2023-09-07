@@ -10,7 +10,7 @@ import (
 
 func main() {
 	log.New(log.LogType(os.Getenv("LogType")))
-	w := workercluster.New()
+	w := workercluster.New(os.Getenv("K8SCONFIG"))
 	w.Run("aaa", "default", os.Getenv("HOSTNAME"), "8888", &WorkerServerCallBack{})
 	ch := make(chan os.Signal, 1)
 	<-ch
