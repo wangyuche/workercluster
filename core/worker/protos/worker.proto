@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package worker;
+option go_package = "github.com/wangyuche/workercluster/core/worker/protos";
+
+enum WorkerStatus{
+    idle=0;
+    busy=1;
+}
+
+enum WorkerEvent{
+    getstatus=0;
+    dispatch=1;
+}
+
+message WorkerReqStruct {
+    WorkerEvent event = 1; 
+    bytes data = 2;
+}
+
+message WorkerResStruct {
+    WorkerEvent event = 1; 
+    WorkerStatus status = 2;
+    bytes data = 3;
+}
+
+service WorkerGRPC {
+    rpc StreamWorker(stream WorkerResStruct) returns (stream WorkerReqStruct) {};
+}
