@@ -5,6 +5,7 @@ import (
 	"io"
 	"net"
 	"sync"
+	"time"
 
 	"github.com/wangyuche/goutils/log"
 	wk "github.com/wangyuche/workercluster/core/worker/protos"
@@ -108,7 +109,7 @@ type iWorkerClientCallBack interface {
 
 func NewWorker(host string, cb iWorkerClientCallBack) *Worker {
 	w := &Worker{}
-	conn, err := grpc.Dial(host, grpc.WithInsecure(), grpc.WithBlock())
+	conn, err := grpc.Dial(host, grpc.WithInsecure(), grpc.WithBlock(), grpc.WithTimeout(5*time.Second))
 	if err != nil {
 		log.Fail(err.Error())
 	}
