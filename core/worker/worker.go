@@ -10,7 +10,6 @@ import (
 	"github.com/wangyuche/goutils/log"
 	wk "github.com/wangyuche/workercluster/core/worker/protos"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/connectivity"
 )
 
 type Server struct {
@@ -102,8 +101,6 @@ type Worker struct {
 	stream       wk.WorkerGRPC_StreamWorkerClient
 	status       wk.WorkerStatus
 	cb           iWorkerClientCallBack
-	conn         *grpc.ClientConn
-	done         chan bool
 	reconnect    chan bool
 }
 
@@ -111,7 +108,7 @@ type iWorkerClientCallBack interface {
 	WorkerRecv([]byte)
 }
 
-func NewWorker(host string, cb iWorkerClientCallBack) *Worker {
+func NewWorker(host string, cb iWorkerClientCallBack, reconnect chan bool) *Worker {
 	w := &Worker{}
 	conn, err := grpc.Dial(host, grpc.WithInsecure(), grpc.WithBlock(), grpc.WithTimeout(5*time.Second))
 	if err != nil {
@@ -122,30 +119,23 @@ func NewWorker(host string, cb iWorkerClientCallBack) *Worker {
 	if err != nil {
 		log.Fail(err.Error())
 	}
-	w.conn = conn
 	w.cb = cb
 	w.stream = stream
+	w.reconnect = reconnect
 	return w
 }
 
-func (this *Worker) waitUntilReady() bool {
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-	defer cancel()
-	return this.conn.WaitForStateChange(ctx, connectivity.Ready)
-}
-
-func (this *Worker) process() {
+func (this *Worker) Run() {
 	go func() {
 		for {
 			data, err := this.stream.Recv()
 			if err == io.EOF {
-				this.done <- true
-				return
+				break
 			}
 			if err != nil {
 				log.Error(err.Error())
 				this.reconnect <- true
-				return
+				break
 			}
 			switch data.Event {
 			case wk.WorkerEvent_getstatus:
@@ -157,21 +147,6 @@ func (this *Worker) process() {
 			default:
 				break
 			}
-		}
-	}()
-}
-
-func (this *Worker) Run() {
-	go this.process()
-	go func() {
-		select {
-		case <-this.reconnect:
-			if !this.waitUntilReady() {
-				log.Fail("ReConnect Fail")
-			}
-			go this.process()
-		case <-this.done:
-			return
 		}
 	}()
 }

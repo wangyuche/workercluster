@@ -2,6 +2,7 @@ package workercluster
 
 import (
 	"context"
+	"time"
 
 	"github.com/wangyuche/workercluster/core/k8s"
 	"github.com/wangyuche/workercluster/core/leader"
@@ -20,6 +21,8 @@ type WorkerCluster struct {
 	stream         chan wk.WorkerGRPC_StreamWorkerServer
 	cb             iWorkerCallBack
 	worker         *worker.Worker
+	reconnect      chan bool
+	m              string
 }
 
 type iWorkerCallBack interface {
@@ -45,6 +48,7 @@ func (this *WorkerCluster) Run(name string, namespace string, id string, port st
 	this.leadercancel = cancel
 	this.bemastercb = make(chan bool)
 	this.masterchangecb = make(chan string)
+	this.reconnect = make(chan bool)
 	this.cb = cb
 	go this.leaderElectionEvent()
 	l := leader.New(this.k8s, ctx, name, namespace, id, &LeaderCallBack{bemastercb: this.bemastercb, masterchangecb: this.masterchangecb})
@@ -59,7 +63,13 @@ func (this *WorkerCluster) leaderElectionEvent() {
 			this.cb.BeMaster()
 			break
 		case m := <-this.masterchangecb:
-			this.worker = worker.NewWorker(m, this.cb)
+			this.m = m
+			this.worker = worker.NewWorker(this.m, this.cb, this.reconnect)
+			this.worker.Run()
+			break
+		case <-this.reconnect:
+			time.Sleep(5 * time.Second)
+			this.worker = worker.NewWorker(this.m, this.cb, this.reconnect)
 			this.worker.Run()
 			break
 		default:
